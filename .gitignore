@@ -1,0 +1,14 @@
+/node_modules
+/cloned_repos
+package-lock.json
+.env
+src/*.js
+.vscode
+dist
+app.log
+cov_out.txt
+coverage_output.txt
+NUL
+test_cov.json
+/coverage
+/dist

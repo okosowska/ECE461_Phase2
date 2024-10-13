@@ -1,0 +1,100 @@
+start processing urls...
+
+Processing URLs (1/8) --> https://github.com/cloudinary/cloudinary_npm
+Cloning GitHub repo: https://github.com/cloudinary/cloudinary_npm
+Cloned https://github.com/cloudinary/cloudinary_npm successfully.
+
+Metrics Results :
+ + URL : https://github.com/cloudinary/cloudinary_npm
+ + NetScore : 0.535
+ + NetScore_Latency : 0.471
+ + busFactor : 0.100
+ + busFactor_Latency : 0.451
+ + maintainerActiveness : 0.971
+ + maintainerActiveness_Latency : 0.491
+
+--------------------------------------------------------------------------------
+Processing URLs (2/8) --> https://www.npmjs.com/package/express
+npm converted to GitHub URL: https://github.com/expressjs/express.git
+Cloning GitHub repo: https://github.com/expressjs/express.git
+Cloned https://github.com/expressjs/express.git successfully.
+
+Metrics Results :
+ + URL : https://github.com/expressjs/express.git
+ + NetScore : 0.784
+ + NetScore_Latency : 0.374
+ + maintainerActiveness : 0.969
+ + maintainerActiveness_Latency : 0.369
+ + busFactor : 0.600
+ + busFactor_Latency : 0.379
+
+--------------------------------------------------------------------------------
+Processing URLs (3/8) --> https://github.com/nullivex/nodist
+Cloning GitHub repo: https://github.com/nullivex/nodist
+Cloned https://github.com/nullivex/nodist successfully.
+
+Metrics Results :
+ + URL : https://github.com/nullivex/nodist
+ + NetScore : 0.497
+ + NetScore_Latency : 0.538
+ + busFactor : 0.100
+ + busFactor_Latency : 0.388
+ + maintainerActiveness : 0.893
+ + maintainerActiveness_Latency : 0.688
+
+--------------------------------------------------------------------------------
+Processing URLs (4/8) --> httpsasdfasdf://github.com/midas1214/hw1_github_tutorial.git
+Cloning GitHub repo: httpsasdfasdf://github.com/midas1214/hw1_github_tutorial.git
+Error handling url httpsasdfasdf://github.com/midas1214/hw1_github_tutorial.git
+Error message : Error: Failed to clone httpsasdfasdf://github.com/midas1214/hw1_github_tutorial.git
+Error message : Error: Cloning into './cloned_repos/midas1214 hw1_github_tutorial'...
+git: 'remote-httpsasdfasdf' is not a git command. See 'git --help'.
+
+--------------------------------------------------------------------------------
+Processing URLs (5/8) --> https://github.com/lodash/lodash
+Cloning GitHub repo: https://github.com/lodash/lodash
+Cloned https://github.com/lodash/lodash successfully.
+
+Metrics Results :
+ + URL : https://github.com/lodash/lodash
+ + NetScore : 0.541
+ + NetScore_Latency : 0.297
+ + busFactor : 0.100
+ + busFactor_Latency : 0.248
+ + maintainerActiveness : 0.982
+ + maintainerActiveness_Latency : 0.347
+
+--------------------------------------------------------------------------------
+Processing URLs (6/8) --> https://www.npmjs.com/package/browserify
+npm converted to GitHub URL: https://github.com/browserify/browserify.git
+Cloning GitHub repo: https://github.com/browserify/browserify.git
+Cloned https://github.com/browserify/browserify.git successfully.
+
+Metrics Results :
+ + URL : https://github.com/browserify/browserify.git
+ + NetScore : 0.404
+ + NetScore_Latency : 0.300
+ + busFactor : 0
+ + busFactor_Latency : 0.218
+ + maintainerActiveness : 0.808
+ + maintainerActiveness_Latency : 0.382
+
+--------------------------------------------------------------------------------
+Processing URLs (7/8) --> https://github.com/midas1214/hw1_github_tutorial.git
+Cloning GitHub repo: https://github.com/midas1214/hw1_github_tutorial.git
+Cloned https://github.com/midas1214/hw1_github_tutorial.git successfully.
+
+Metrics Results :
+ + URL : https://github.com/midas1214/hw1_github_tutorial.git
+ + NetScore : 0.550
+ + NetScore_Latency : 0.224
+ + busFactor : 0.100
+ + busFactor_Latency : 0.207
+ + maintainerActiveness : 1
+ + maintainerActiveness_Latency : 0.241
+
+--------------------------------------------------------------------------------
+Processing URLs (8/8) --> https://github.com/ECE46100/group21-phase1/issues
+Error processing the URL file
+Error message : Error: Not a repo url : ECE46100,group21-phase1,issues
+--------------------------------------------------

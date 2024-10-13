@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Function to install dependencies (sort of)
+install() {
+    echo -e "start installing dependencies...\\n"
+    npm install > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "Dependencies installed successfully."
+        exit 0
+    else
+        echo "Failed to install dependencies."
+        exit 1
+    fi
+}
+
+# Function to run tests (sort of)
+run_tests() {
+    npm run build >/dev/null 2>&1
+    npm run test:coverage --silent
+    npm run test -- --coverage > cov_out.txt 2> /dev/null 2>&1
+
+    passed=$(egrep -o '"numPassedTests":[0-9]{2}' test_cov.json)
+    num_passed=$(echo $passed | egrep -o '[0-9]{2}')
+
+    total=$(egrep -o '"numTotalTests":[0-9]{2}' test_cov.json)
+    num_total=$(echo $total | egrep -o '[0-9]{2}')
+
+    percent=$(grep -w "All files" cov_out.txt | awk '{print $10}')
+
+    # echo "Total: $num_total"
+    # echo "Passed: $num_passed"
+    # echo "Coverage: $percent%"
+    echo -n "$num_passed/$num_total test cases passed. $percent% line coverage achieved."
+    
+    exit 0;
+}
+
+# Function to process URLs using TypeScript
+process_urls() {
+    # echo -e "start processing urls...\\n"
+    URL_FILE=$1
+    if [ -f "$URL_FILE" ]; then
+        # To make it faster : pre-compile the processUrl.ts and just run the js file as below
+        npm run build >/dev/null 2>&1
+        node src/processUrls.js "$URL_FILE"
+        if [ $? -eq 0 ]; then
+            exit 0
+        else
+            exit 1
+        fi
+    else
+        echo "File not found: $URL_FILE"
+        exit 1
+    fi
+}
+
+
+# Main script logic
+case "$1" in
+    install)
+        install
+        ;;
+    test)
+        run_tests
+        ;;
+    *)
+        if [ -n "$1" ]; then
+            process_urls "$1"
+        else
+            echo "Usage: ./run {install|URL_FILE|test}"
+            exit 1
+        fi
+        ;;
+esac
