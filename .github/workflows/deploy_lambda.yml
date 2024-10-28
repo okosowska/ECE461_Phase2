@@ -1,4 +1,4 @@
-name: Build and Deploy to AWS Lambda
+name: CD - Build and Deploy to AWS Lambda
 
 on:
   pull_request:
