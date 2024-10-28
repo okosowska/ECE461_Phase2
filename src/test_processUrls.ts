@@ -1,4 +1,4 @@
-import processURLs from './processUrls';
+import { processURLs } from './processUrls';
 
 console.log('Running test_processURLs.ts');
 const filePath = 'src/test_input.txt';

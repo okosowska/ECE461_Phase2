@@ -157,6 +157,78 @@ async function processURLs(filePath: string): Promise<void> {
     }
 }
 
+/**
+ * @function processURL
+ * @description Processes a single URL, classifying and converting npm URLs to GitHub, and cloning repos.
+ * @param {string} url - The URL to process.
+ * @returns {Promise<void>}
+ */
+async function processURL(url: string): Promise<void> {
+    try {
+        const githubUrl = await classifyAndConvertURL(url);
+        if (githubUrl) {
+            const pathSegments = githubUrl.pathname.split('/').filter(Boolean);
+            if (pathSegments.length !== 2) await handleOutput('', `Not a repo URL: ${pathSegments.toString()}`);
+            const owner = pathSegments[0];
+            const packageName = pathSegments[1].replace('.git', '');
+            
+            try {
+                await cloneRepo(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
+                await computeMetrics(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`)
+                    .then(async result => {
+                        const resultObj = result as Record<string, unknown>;
+                        for (const [key, value] of Object.entries(resultObj)) {
+                            if (typeof value === 'number' && value % 1 !== 0) {
+                                resultObj[key] = Math.round(value * 1000) / 1000;
+                            }
+                        }
+                        await handleOutput(JSON.stringify(resultObj), '');
+                    })
+                    .catch(async (error: unknown) => {
+                        await handleOutput('', `Error computing metrics\nError message: ${error}`);
+                    });
+            } catch (error) {
+                await handleOutput('', `Error handling URL ${githubUrl}\nError message: ${(error as Error).message}`);
+            }
+        } else {
+            await handleOutput('', 'GitHub URL is null.');
+        }
+    } catch (error) {
+        await handleOutput('', `Error processing the URL\nError message: ${(error as Error).message}`);
+    }
+}
+
+/**
+ * Lambda-compatible handler
+ * Checks for either a 'filePath' (to use processURLs) or 'url' (to use processURL) parameter.
+ * @param {object} event - The Lambda event object.
+ * @param {object} context - The Lambda context object (not used here).
+ * @returns {Promise<object>} - The response object for Lambda.
+ */
+async function handler(event: { filePath?: string, url?: string }, context: any): Promise<object> {
+    if (event.filePath) {
+        try {
+            await processURLs(event.filePath);
+            return { statusCode: 200, body: 'Finished processing URLs from file.' };
+        } catch (error) {
+            const err = error as Error;
+            winston.log('debug', `Error processing URLs from file: ${err.message}`);
+            return { statusCode: 500, body: `Error processing URLs from file: ${err.message}` };
+        }
+    } else if (event.url) {
+        try {
+            await processURL(event.url);
+            return { statusCode: 200, body: `Finished processing URL: ${event.url}` };
+        } catch (error) {
+            const err = error as Error;
+            winston.log('debug', `Error processing URL: ${err.message}`);
+            return { statusCode: 500, body: `Error processing URL: ${err.message}` };
+        }
+    } else {
+        return { statusCode: 400, body: 'No filePath or url provided in the event.' };
+    }
+};
+
 /* Entry point */
 if (require.main === module) {
     const filePath = process.argv[2];
@@ -186,4 +258,4 @@ if (require.main === module) {
 }
 
 // export default processURLs;
-export {readURLFile, classifyAndConvertURL, cloneRepo, processURLs}
+module.exports = {handler, readURLFile, classifyAndConvertURL, cloneRepo, processURLs}
