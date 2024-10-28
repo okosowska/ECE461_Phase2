@@ -12,3 +12,5 @@ NUL
 test_cov.json
 /coverage
 /dist
+package.zip
+lambda_function.zip
