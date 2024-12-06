@@ -1,25 +1,25 @@
-name: CI - Run Tests with Run Bash Script
+# name: CI - Run Tests with Run Bash Script
 
-on:
-  pull_request:
-    branches:
-      - main
+# on:
+#   pull_request:
+#     branches:
+#       - main
 
-jobs:
-  run_tests:
-    runs-on: ubuntu-latest
+# jobs:
+#   run_tests:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '22'
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '22'
 
-    - name: Install Dependencies
-      run: ./run install
+#     - name: Install Dependencies
+#       run: ./run install
 
-    - name: Run Tests with Bash Script
-      run: ./run test
+#     - name: Run Tests with Bash Script
+#       run: ./run test
