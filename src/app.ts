@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import packageRoutes from './routes/packageRoutes';
+import packagesRoutes from './routes/packagesRoutes';
 import resetRoutes from './routes/resetRoutes';
 import userRoutes from './routes/userRoutes';
 import { authenticateToken } from './middleware/authMiddleware';
@@ -21,7 +22,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/packages', packageRoutes);
+app.use('/packages', packagesRoutes);
+app.use('/package', packageRoutes)
 app.use('/reset', resetRoutes);
 app.use('/', userRoutes);
 

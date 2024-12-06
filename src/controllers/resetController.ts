@@ -1,20 +1,36 @@
 import { Request, Response } from "express";
+import { ddbDocClient } from "../utils/dbHelper";
+import { ScanCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 
-let registry = {
-    packages: [],
-    users: [{ username: 'ece30861defaultadminuser', isAdmin: true }],
-}
-
-export const resetRegistry = (req: Request, res: Response) => {
+export const resetRegistry = async (req: Request, res: Response) => {
     try {
-        registry = {
-            packages: [],
-            users: [{ username: 'ece30861defaultadminuser', isAdmin: true }],
+        const scanParams = {
+            TableName: 'Packages',
         };
+        const data = await ddbDocClient.send(new ScanCommand(scanParams));
 
-        res.status(200).send('Registry has been reset.');
+        if (data.Items && data.Items.length > 0) {
+            const deleteRequests = data.Items.map((item) => ({
+                DeleteRequest: {
+                    Key: {
+                        ID: item.ID,
+                        Version: item.Version,
+                    },
+                },
+            }));
+
+            const deleteParams = {
+                RequestItems: {
+                    Packages: deleteRequests,
+                },
+            };
+
+            await ddbDocClient.send(new BatchWriteCommand(deleteParams));
+        }
+
+        res.status(200).json({ message: 'Database reset successfully' });
     } catch (error) {
-        console.error('Error resetting registry:', error);
-        res.status(500).send('Failed to reset registry.');
+        console.error('Error resetting database:', error);
+        res.status(500).json({ error: 'Failed to reset database' });
     }
 };
