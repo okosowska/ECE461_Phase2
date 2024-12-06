@@ -28,6 +28,9 @@
     "esModuleInterop": true,
     "target": "ES2017"
   },
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
     "./tests/*.ts"
   ]
