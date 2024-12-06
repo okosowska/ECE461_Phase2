@@ -14,3 +14,4 @@ test_cov.json
 /dist
 package.zip
 lambda_function.zip
+curl_command.sh
