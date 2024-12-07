@@ -4,11 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npx tsc",
+    "build_old": "npx tsc",
     "test": "jest --testPathPattern=src/",
     "test:coverage": "jest --testPathPattern=src/ --coverage --json --outputFile=test_cov.json > NUL 2>&1",
     "build_aws": "esbuild ./src/processUrls.ts --bundle --platform=node --outdir=dist --format=cjs --external:jiti",
-    "dev": "ts-node-dev src/app.ts"
+    "dev": "ts-node-dev src/app.ts",
+    "node_test": "ts-node src/app.ts",
+    "build": "node esbuild.config.js",
+    "start": "sam local start-api",
+    "deploy": "sam deploy --guided"
   },
   "author": "",
   "license": "ISC",
