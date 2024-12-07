@@ -7,8 +7,8 @@ export const validatePackageRequest = (req: Request, res: Response, next: Functi
         return res.status(400).json({ error: 'Missing required fields: metadata and data are required.' });
     }
 
-    const { Name, Version, ID } = metadata;
-    if (!Name || !Version || !ID) {
+    const { Name, Version } = metadata;
+    if (!Name || !Version) {
         return res.status(400).json({ error: 'Metadata must include Name, Version, and ID.' });
     }
 
