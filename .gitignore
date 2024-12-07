@@ -15,3 +15,5 @@ test_cov.json
 package.zip
 lambda_function.zip
 curl_command.sh
+sam-template.yaml
+tc
