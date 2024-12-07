@@ -163,40 +163,64 @@ async function processURLs(filePath: string): Promise<void> {
  * @param {string} url - The URL to process.
  * @returns {Promise<void>}
  */
-async function processURL(url: string): Promise<void> {
+async function processURL(url: string): Promise<Record<string, unknown> | null> {
     try {
         const githubUrl = await classifyAndConvertURL(url);
         if (githubUrl) {
             const pathSegments = githubUrl.pathname.split('/').filter(Boolean);
-            if (pathSegments.length !== 2) await handleOutput('', `Not a repo URL: ${pathSegments.toString()}`);
+            if (pathSegments.length !== 2) {
+                await handleOutput('', `Not a repo URL: ${pathSegments.toString()}`);
+                return null;
+            }
             const owner = pathSegments[0];
             const packageName = pathSegments[1].replace('.git', '');
             
             try {
+                // await cloneRepo(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
+                // await computeMetrics(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`)
+                //     .then(async result => {
+                //         const resultObj = result as Record<string, unknown>;
+                //         for (const [key, value] of Object.entries(resultObj)) {
+                //             if (typeof value === 'number' && value % 1 !== 0) {
+                //                 resultObj[key] = Math.round(value * 1000) / 1000;
+                //             }
+                //         }
+                //         await handleOutput(JSON.stringify(resultObj), '');
+                //         console.log('processURL.ts: ', resultObj);
+                //         return resultObj;
+                //     })
+                //     .catch(async (error: unknown) => {
+                //         await handleOutput('', `Error computing metrics\nError message: ${error}`);
+                //         return null;
+                //     });
                 await cloneRepo(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
-                await computeMetrics(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`)
-                    .then(async result => {
-                        const resultObj = result as Record<string, unknown>;
-                        for (const [key, value] of Object.entries(resultObj)) {
-                            if (typeof value === 'number' && value % 1 !== 0) {
-                                resultObj[key] = Math.round(value * 1000) / 1000;
-                            }
-                        }
-                        await handleOutput(JSON.stringify(resultObj), '');
-                    })
-                    .catch(async (error: unknown) => {
-                        await handleOutput('', `Error computing metrics\nError message: ${error}`);
-                    });
+                const result = await computeMetrics(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
+                
+                const resultObj = result as Record<string, unknown>;
+                for (const [key, value] of Object.entries(resultObj)) {
+                    if (typeof value === 'number' && value % 1 !== 0) {
+                        resultObj[key] = Math.round(value * 1000) / 1000;
+                    }
+                }
+
+                // Ensure returning result to the caller
+                await handleOutput(JSON.stringify(resultObj), '');
+                return resultObj;
             } catch (error) {
                 await handleOutput('', `Error handling URL ${githubUrl}\nError message: ${(error as Error).message}`);
+                return null;
             }
         } else {
             await handleOutput('', 'GitHub URL is null.');
+            return null;
         }
     } catch (error) {
         await handleOutput('', `Error processing the URL\nError message: ${(error as Error).message}`);
+        return null;
     }
-}
+    console.log('You shouldnt be here');
+    return null;
+};
 
 /**
  * Lambda-compatible handler
@@ -258,4 +282,5 @@ if (require.main === module) {
 }
 
 // export default processURLs;
-module.exports = {handler, readURLFile, classifyAndConvertURL, cloneRepo, processURLs}
+export { processURL };
+// module.exports = {handler, readURLFile, classifyAndConvertURL, cloneRepo, processURLs}
