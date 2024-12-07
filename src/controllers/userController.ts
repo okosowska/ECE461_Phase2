@@ -7,7 +7,7 @@ export const authenticateUser = (req: Request, res: Response) => {
     const { User, Secret } = req.body;
 
     if (!User?.name || !Secret?.password) {
-        return res.status(400).send('Missing fields in the AuthenticationRequest.');
+        return res.status(400).send('There is missing field(s) in the AuthenticationRequest or it is formed improperly.');
     }
 
     // Validation
