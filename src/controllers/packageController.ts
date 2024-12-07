@@ -410,6 +410,48 @@ export const ratePackage = async (req: Request, res: Response) => {
     }
 };
 
+export const getPackageCost = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        // Query the package by ID
+        const queryParams: QueryCommandInput = {
+            TableName: 'Packages',
+            KeyConditionExpression: 'ID = :id',
+            ExpressionAttributeValues: {
+                ':id': { S: id },
+            },
+            ScanIndexForward: false,
+            Limit: 1,
+        };
+
+        const queryData = await ddbDocClient.send(new QueryCommand(queryParams));
+        if (!queryData.Items || queryData.Items.length === 0) {
+            return res.status(404).json({ error: 'Package not found.' });
+        }
+
+        // Extract the package data
+        const packageData = unmarshall(queryData.Items[0]);
+
+        // Check for Content in data
+        if (!packageData.data?.Content) {
+            return res.status(500).json({ error: "Package content is missing" });
+        }
+
+        const totalCost = calculatePackageSize(packageData.data.Content);
+
+        // Respond with the cost
+        return res.status(200).json({
+            [packageData.ID]: {
+                totalCost
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching package cost:", error);
+        return res.status(500).json({ error: "Failed to calculate package cost" });
+    }
+};
+
 async function clearClonedRepos(): Promise<void> {
     const clonedReposPath = path.resolve('./cloned_repos');
     try {
@@ -418,4 +460,12 @@ async function clearClonedRepos(): Promise<void> {
     } catch (error) {
         console.error(`Failed to delete cloned_repos directory: ${(error as Error).message}`);
     }
+}
+
+function calculatePackageSize(content: string): number {
+    const sizeInBytes = Buffer.byteLength(content, "base64");
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    return Math.round(sizeInMB * 100) / 100; // Round to 2 decimals
+    // const sizeInKB = sizeInBytes / (1024);
+    // return Math.round(sizeInKB * 100) / 100; // Round to 2 decimals
 }

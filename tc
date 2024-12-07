@@ -25,11 +25,12 @@ fi
 echo "Authentication successful. Token: $TOKEN"
 
 if [ -z "$1" ]; then
-  echo "Usage: ./run_test.sh <test_case_number>"
+  echo "Usage: ./run_test.sh <test_case_number> [optional_package_id]"
   exit 1
 fi
 
 TEST_CASE=$1
+PACKAGE_ID=${2:-'2e3fa26085'}
 
 case $TEST_CASE in
   base)
@@ -123,7 +124,7 @@ case $TEST_CASE in
     ;;
   get-package)
     echo "Testcase: Package by ID"
-    curl -X GET $BASE_URL/package/098045d0da \
+    curl -X GET $BASE_URL/package/$PACKAGE_ID \
       -H "X-Authorization: $TOKEN"
     ;;
   update)
@@ -144,7 +145,12 @@ case $TEST_CASE in
     ;;
   rate)
     echo "Testcase: Package by ID Rate"
-    curl -X GET $BASE_URL/package/098045d0da/rate \
+    curl -X GET $BASE_URL/package/$PACKAGE_ID/rate \
+      -H "X-Authorization: $TOKEN"
+    ;;
+  cost)
+    echo "Testcase: Package by ID Cost"
+    curl -X GET $BASE_URL/package/$PACKAGE_ID/cost \
       -H "X-Authorization: $TOKEN"
     ;;
   *)
