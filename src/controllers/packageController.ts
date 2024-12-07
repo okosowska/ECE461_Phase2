@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, response, Response } from 'express';
 import { ddbDocClient } from '../utils/dbHelper';
 import { GetCommand, PutCommand, QueryCommandInput } from '@aws-sdk/lib-dynamodb';
 import { QueryCommand } from '@aws-sdk/client-dynamodb';
@@ -7,6 +7,9 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { isExactVersion, isBoundedRange, parseBoundedRange, satisfiesRange, isVersionNewer, checkPackageVersionExists } from '../utils/versionUtils';
 import { generatePackageID } from '../utils/idUtils';
 import { fetchPackageFromUrl } from '../utils/urlHelper';
+import { processURL } from '../metrics/processUrls'
+import * as fs from 'fs';
+import * as path from 'path';
 
 type PackageItem = {
     Name: string;
@@ -341,3 +344,78 @@ const fetchAllPackagesByName = async (name: string): Promise<PackageItem[]> => {
     const data = await ddbDocClient.send(new ScanCommand(params));
     return data.Items as PackageItem[];
 };
+
+export const ratePackage = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        // Use QueryCommand to fetch the latest version
+        const queryParams: QueryCommandInput = {
+            TableName: 'Packages',
+            KeyConditionExpression: 'ID = :id',
+            ExpressionAttributeValues: {
+                ':id': { S: id },
+            },
+            ScanIndexForward: false,
+            Limit: 1,
+        };
+
+        const queryData = await ddbDocClient.send(new QueryCommand(queryParams));
+        if (!queryData.Items || queryData.Items.length === 0) {
+            return res.status(404).json({ error: 'Package not found.' });
+        }
+
+        // Extract the package data
+        const packageData = unmarshall(queryData.Items[0]);
+
+        if (!packageData.data?.URL) {
+            return res.status(400).json({ error: 'Package does not have a URL for rating.' });
+        }
+
+        const packageUrl = packageData.data.URL;
+        console.info(`Processing package URL: ${packageUrl}`);
+
+        // Call the processURL function
+        const metrics = await processURL(packageUrl);
+        console.log('packageController.ts: ', metrics);
+        if (!metrics) {
+            return res.status(500).json({
+                error: 'Failed to process URL. See server logs for details.',
+            });
+        }
+    
+        res.status(200).json({
+            BusFactor: metrics.BusFactor || -1,
+            BusFactorLatency: metrics.BusFactor_Latency || -1,
+            Correctness: metrics.Correctness || -1,
+            CorrectnessLatency: metrics.Correctness_Latency || -1,
+            RampUp: metrics.RampUp || -1,
+            RampUpLatency: metrics.RampUp_Latency || -1,
+            ResponsiveMaintainer: metrics.ResponsiveMaintainer || -1,
+            ResponsiveMaintainerLatency: metrics.ResponsiveMaintainer_Latency || -1,
+            LicenseScore: metrics.License || -1,
+            LicenseScoreLatency: metrics.License_Latency || -1,
+            GoodPinningPractice: metrics.GoodPinningPractice || -1,
+            GoodPinningPracticeLatency: metrics.GoodPinningPractice_Latency || -1,
+            PullRequest: metrics.PullRequest || -1,
+            PullRequestLatency: metrics.PullRequest_Latency || -1,
+            NetScore: metrics.NetScore || -1,
+            NetScoreLatency: metrics.NetScore_Latency || -1,
+        });
+    } catch (error) {
+        console.error('Error rating package:', error);
+        res.status(500).json({ error: 'Failed to rate package.' });
+    } finally {
+        await clearClonedRepos();
+    }
+};
+
+async function clearClonedRepos(): Promise<void> {
+    const clonedReposPath = path.resolve('./cloned_repos');
+    try {
+        await fs.promises.rm(clonedReposPath, { recursive: true, force: true });
+        console.log(`Deleted cloned repositories directory: ${clonedReposPath}`);
+    } catch (error) {
+        console.error(`Failed to delete cloned_repos directory: ${(error as Error).message}`);
+    }
+}

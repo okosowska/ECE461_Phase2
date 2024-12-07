@@ -142,6 +142,11 @@ case $TEST_CASE in
         }
       }'
     ;;
+  rate)
+    echo "Testcase: Package by ID Rate"
+    curl -X GET $BASE_URL/package/098045d0da/rate \
+      -H "X-Authorization: $TOKEN"
+    ;;
   *)
     echo "No Testcase named $TEST_CASE"
     exit 1

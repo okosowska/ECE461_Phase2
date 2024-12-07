@@ -1,3 +1,5 @@
+import { Response } from 'express';
+
 /**
  * @function handleOutput
  * @description Handles the output of the result, error message, or log file. At least one of the message/errorMessage must be specified.
