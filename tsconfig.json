@@ -27,6 +27,7 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "target": "ES2017",
+    "module": "CommonJS"
   },
   "exclude": [
     "./tests/*.ts"

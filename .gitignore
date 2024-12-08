@@ -17,3 +17,8 @@ lambda_function.zip
 curl_command.sh
 sam-template.yaml
 tc
+samconfig.toml
+template.yaml
+.aws-sam/
+index.js
+index.js.map
