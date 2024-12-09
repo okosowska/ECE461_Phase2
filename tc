@@ -1,7 +1,7 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:3030"
-# BASE_URL="https://2uylc3v1a8.execute-api.us-east-2.amazonaws.com/Prod/"
+# BASE_URL="http://localhost:3030"
+BASE_URL="https://2uylc3v1a8.execute-api.us-east-2.amazonaws.com/Prod/"
 
 # Authenticate and fetch the token
 AUTH_RESPONSE=$(curl -s -X PUT $BASE_URL/authenticate \
@@ -114,7 +114,7 @@ case $TEST_CASE in
   get-package)
     echo "Testcase: Package by ID"
     curl -X GET $BASE_URL/package/$PACKAGE_ID \
-      -H "X-Authorization: $TOKEN"
+      -H "X-Authorization: BSTOKEN"
     ;;
   get-byname)
     echo "Testcase: Package by name"
