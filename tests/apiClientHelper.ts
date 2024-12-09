@@ -21,7 +21,6 @@ export async function authenticate() {
     });
   
     token = response.data;
-    console.log("Authenticated with token", token);
 }
 
 export async function get(url: string, noheader: boolean = false) {

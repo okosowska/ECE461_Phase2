@@ -25,7 +25,7 @@ describe('/packages', () => {
 
     it('check 400', async () => {
         await expect(
-        apiClient.post('/packages', [{ InvalidField: 'test' }])
+        apiClient.post('/packages', [{ test: 'test' }])
         ).rejects.toThrow('Request failed with status code 400');
     });
 
