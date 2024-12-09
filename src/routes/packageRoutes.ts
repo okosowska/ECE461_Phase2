@@ -10,6 +10,6 @@ router.get('/:id', authenticateToken as any, getPackageByID as any);
 router.put('/:id', authenticateToken as any, updatePackage as any);
 router.get('/:id/rate', authenticateToken as any, ratePackage as any);
 router.get('/:id/cost', authenticateToken as any, getPackageCost as any);
-router.get('/byName/:Name', authenticateToken as any, getPackageByName as any);
+router.get('/byName/:name', authenticateToken as any, getPackageByName as any);
 
 export default router;
