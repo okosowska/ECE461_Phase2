@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import apiClient from './utils/apiClientHelper';
+
 
 const Upload = () => {
   const [name, setName] = useState('');
@@ -15,14 +16,13 @@ const Upload = () => {
     formData.append('Content', content);
 
     try {
-      const response = await axios.post(
-        'http://your-api-gateway-url/package',
-        formData,
-        { headers: { 'X-Authorization': 'your_token_here', 'Content-Type': 'multipart/form-data' } }
-      );
+      await apiClient.authenticate();
+      const response = await apiClient.post('/package', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setMessage(`Package ${response.data.metadata.Name} uploaded successfully!`);
-    } catch (error) {
-      setMessage(`Error: ${error.response?.data?.message || error.message}`);
+    } catch (err) {
+      setMessage(`Error: ${err.response?.data?.message || err.message}`);
     }
   };
 

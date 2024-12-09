@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import apiClient from './utils/apiClientHelper';
 
 const Search = () => {
   const [query, setQuery] = useState('');
@@ -8,11 +8,8 @@ const Search = () => {
 
   const handleSearch = async () => {
     try {
-      const response = await axios.post(
-        'http://your-api-gateway-url/package/byRegEx',
-        { RegEx: query },
-        { headers: { 'X-Authorization': 'your_token_here' } }
-      );
+      await apiClient.authenticate();
+      const response = await apiClient.post('/package/byRegEx', { RegEx: query });
       setResults(response.data);
       setError(null);
     } catch (err) {

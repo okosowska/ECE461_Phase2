@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from './utils/apiClientHelper';
+
+
 
 const Details = () => {
   const { id } = useParams();
@@ -8,13 +10,19 @@ const Details = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios
-      .get(`http://your-api-gateway-url/package/${id}`, {
-        headers: { 'X-Authorization': 'your_token_here' },
-      })
-      .then(response => setPackageDetails(response.data))
-      .catch(err => setError(err.message));
+    const fetchPackageDetails = async () => {
+      try {
+        await apiClient.authenticate(); // Ensure authentication
+        const response = await apiClient.get(`/package/${id}`);
+        setPackageDetails(response.data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+  
+    fetchPackageDetails();
   }, [id]);
+  
 
   return (
     <div className="container">

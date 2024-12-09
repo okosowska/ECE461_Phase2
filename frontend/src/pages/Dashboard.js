@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './utils/apiClientHelper';
+
 
 const Dashboard = () => {
   const [packages, setPackages] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios
-      .post(
-        'https://2uylc3v1a8.execute-api.us-east-2.amazonaws.com/Prod/',
-        { Name: '*' }, // Query to fetch all packages
-        { headers: { 'X-Authorization': 'your_token_here' } }
-      )
-      .then(response => setPackages(response.data))
-      .catch(err => {
-        console.error('Error:', err); // Log the entire error object
+    const fetchPackages = async () => {
+      try {
+        await apiClient.authenticate();
+        const response = await apiClient.post('/packages', { Name: '*' });
+        setPackages(response.data);
+      } catch (err) {
         setError(err.message);
-      });
+      }
+    };
+
+    fetchPackages();
   }, []);
 
   return (
@@ -43,7 +44,6 @@ const Dashboard = () => {
       </table>
     </div>
   );
-  
 };
 
 export default Dashboard;
