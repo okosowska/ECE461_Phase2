@@ -15,11 +15,41 @@ const app = express();
 app.use(bodyParser.json());
 
 // Global Authentication
+// app.use((req, res, next) => {
+//     if (req.path === '/authenticate' || req.path === '/tracks') {
+//         return next();
+//     }
+//     authenticateToken(req, res, next);
+// });
+
+// Backend Logging
 app.use((req, res, next) => {
-    if (req.path === '/authenticate' || req.path === '/tracks') {
-        return next();
-    }
-    authenticateToken(req, res, next);
+    console.log({
+        RequestURL: req.url,
+        RequestMethod: req.method,
+        RequestBody: req.body,
+        RequestHeaders: req.headers,
+    });
+    next(); // Proceed to the next middleware
+});
+
+app.use((req, res, next) => {
+    // Capture the original `send` method
+    const originalSend = res.send;
+
+    // Override `res.send`
+    res.send = function (body) {
+        console.log({
+            Status: res.statusCode,
+            Headers: res.getHeaders(),
+            Body: body,
+        });
+
+        // Call the original `send` method with the body
+        return originalSend.call(this, body);
+    };
+
+    next();
 });
 
 // Routes

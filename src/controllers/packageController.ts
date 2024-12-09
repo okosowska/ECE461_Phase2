@@ -8,6 +8,7 @@ import { isExactVersion, isBoundedRange, parseBoundedRange, satisfiesRange, isVe
 import { generatePackageID } from '../utils/idUtils';
 import { fetchPackageFromUrl } from '../utils/urlHelper';
 import { processURL } from '../metrics/processUrls'
+import { uploadToS3, downloadFromS3 } from '../utils/s3Helper';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -16,7 +17,8 @@ type PackageItem = {
     Version: string;
     ID: string;
     data: {
-        Content?: string;
+        S3Bucket?: string;
+        S3Key?: string;
         URL?: string;
         debloat?: boolean;
         JSProgram?: string;
@@ -40,64 +42,75 @@ export const uploadPackage = async (req: Request, res: Response) => {
 
         // If Content-based upload
         if (Content) {
-            // Check if the package already exists in the registry
-            const existingPackages = await ddbDocClient.send(
-                new ScanCommand({
-                    TableName: 'Packages',
-                    FilterExpression: '#name = :name',
-                    ExpressionAttributeNames: { '#name': 'Name' },
-                    ExpressionAttributeValues: { ':name': Name },
-                })
-            );
+            try {
 
-            if (existingPackages.Items && existingPackages.Items.length > 0) {
-                return res.status(400).json({ error: 'Package already exists. Use POST /package/{id} to update versions.' });
-            }
+            
+                // Check if the package already exists in the registry
+                const existingPackages = await ddbDocClient.send(
+                    new ScanCommand({
+                        TableName: 'Packages',
+                        FilterExpression: '#name = :name',
+                        ExpressionAttributeNames: { '#name': 'Name' },
+                        ExpressionAttributeValues: { ':name': Name },
+                    })
+                );
 
-            const contentSize = Buffer.byteLength(Content, 'base64');
-            if (contentSize > MAX_DYNAMODB_ITEM_SIZE) {
-                return res.status(400).json({
-                    error: `Package size exceeds the 400KB limit. Current size: ${(contentSize / 1024).toFixed(2)} KB.`,
-                });
-            }
+                if (existingPackages.Items && existingPackages.Items.length > 0) {
+                    return res.status(409).json({ error: 'Package already exists. Use POST /package/{id} to update versions.' });
+                }
 
-            // Generate package ID (Name + Version)
-            const packageID = generatePackageID(Name, packageVersion);
+                // const contentSize = Buffer.byteLength(Content, 'base64');
+                // if (contentSize > MAX_DYNAMODB_ITEM_SIZE) {
+                //     return res.status(400).json({
+                //         error: `Package size exceeds the 400KB limit. Current size: ${(contentSize / 1024).toFixed(2)} KB.`,
+                //     });
+                // }
 
-            // Save to DynamoDB
-            await ddbDocClient.send(
-                new PutCommand({
-                    TableName: 'Packages',
-                    Item: {
-                        ID: packageID,
+                // Generate package ID (Name + Version)
+                const packageID = generatePackageID(Name, packageVersion);
+                const zipBuffer = Buffer.from(Content, 'base64');
+                await uploadToS3("package-storage-bucket", `${packageID}.zip`, zipBuffer);
+
+                // Save to DynamoDB
+                console.log(packageID, Name, packageVersion, JSProgram)
+                await ddbDocClient.send(
+                    new PutCommand({
+                        TableName: 'Packages',
+                        Item: {
+                            ID: packageID,
+                            Name: Name,
+                            Version: packageVersion,
+                            data: {
+                                S3Bucket: "package-storage-bucket",
+                                S3Key: `${packageID}.zip`,
+                                JSProgram: JSProgram || '',
+                            },
+                        },
+                    })
+                );
+
+                return res.status(201).json({
+                    metadata: {
                         Name: Name,
                         Version: packageVersion,
-                        data: {
-                            Content: packageContent,
-                            JSProgram: JSProgram,
-                        },
+                        ID: packageID,
                     },
-                })
-            );
-
-            return res.status(201).json({
-                metadata: {
-                    Name: Name,
-                    Version: packageVersion,
-                    ID: packageID,
-                },
-                data: {
-                    Content: packageContent,
-                    JSProgram: JSProgram,
-                },
-            });
+                    data: {
+                        Content: packageContent,
+                        JSProgram: JSProgram || '',
+                    },
+                });
+            } catch (error) {
+                console.error("Error uploading package (Content):", error);
+                return res.status(400).json({ error: error });
+            }
         }
 
         // If URL-based upload
         if (URL) {
             try {
                 const fetchedPackage = await fetchPackageFromUrl(URL);
-                const packageSize = Buffer.byteLength(fetchedPackage.content, 'base64');
+                const zipBuffer = Buffer.from(fetchedPackage.content, 'base64');
                 packageVersion = fetchedPackage.version || "1.0.0";
                 // console.log(fetchedPackage.version, packageVersion);
 
@@ -106,19 +119,12 @@ export const uploadPackage = async (req: Request, res: Response) => {
                     return res.status(400).json({ error: 'Package version already exists.' });
                 }
 
-                let urlContent = ''
-                
-                if (packageSize > MAX_DYNAMODB_ITEM_SIZE) {
-                    // data.Content = 'UEsDBBQAAAAAAA9DQlMAAAAAAAAAAAAAAAALACAAZXhjZXB';
-                    urlContent = 'UEsDBBQAAAAAAA9DQlMAAAAAAAAAAAAAAAALACAAZXhjZXB';
-                } else {
-                    // data.Content = fetchedPackage.content;
-                    urlContent = fetchedPackage.content;
-                }
-
                 const packageID = generatePackageID(Name, packageVersion);
+
+                await uploadToS3("package-storage-bucket", `${packageID}.zip`, zipBuffer);
         
                 // Store the compressed content in DynamoDB
+                console.log(packageID, Name, packageVersion, JSProgram, URL)
                 await ddbDocClient.send(
                     new PutCommand({
                         TableName: "Packages",
@@ -127,9 +133,10 @@ export const uploadPackage = async (req: Request, res: Response) => {
                             Name: Name,
                             Version: packageVersion,
                             data: {
-                                Content: urlContent, // Store the compressed Base64 string
+                                S3Bucket: "package-storage-bucket",
+                                S3Key: `${packageID}.zip`,
                                 URL: URL,
-                                JSProgram: JSProgram,
+                                JSProgram: JSProgram || '',
                             },
                         },
                     })
@@ -142,13 +149,13 @@ export const uploadPackage = async (req: Request, res: Response) => {
                         ID: packageID,
                     },
                     data: {
-                        Content: urlContent,
+                        Content: fetchedPackage.content,
                         URL: URL,
-                        JSProgram: JSProgram,
+                        JSProgram: JSProgram || '',
                     },
                 });
             } catch (error) {
-                console.error("Error uploading package:", error);
+                console.error("Error uploading package (URL):", error);
                 return res.status(400).json({ error: error });
             }
         }
@@ -162,14 +169,13 @@ export const uploadPackage = async (req: Request, res: Response) => {
 
 export const updatePackage = async (req: Request, res: Response) => {
     const { id } = req.params;
-    const updatedPackage = req.body;
+    const { metadata, data } = req.body;
 
-    if (!id || !updatedPackage) {
+    if (!id || !data) {
         return res.status(400).json({ error: 'ID and package data are required.' });
     }
 
-    const { metadata, data } = updatedPackage;
-    if (!metadata || !data || !metadata.Name || !metadata.Version) {
+    if (!metadata || !data || !metadata.Name || !metadata.Version || !data.Content) {
         return res.status(400).json({ error: 'Metadata and data fields are required, including Name, Version, Content.' });
     }
 
@@ -204,19 +210,43 @@ export const updatePackage = async (req: Request, res: Response) => {
             return res.status(400).json({ error: `Version ${metadata.Version} is not newer than the current version.`})
         }
 
-        const putParams = {
-            TableName: 'Packages',
-            Item: {
-                ID: generatePackageID(existingPackage.Name, metadata.Version),
-                Version: metadata.Version,
-                Name: existingPackage.Name,
-                data: {
-                    ...data,
-                },
-            },
-        };
+        const packageID = generatePackageID(existingPackage.Name, metadata.Version);
 
-        await ddbDocClient.send(new PutCommand(putParams));
+        const contentBuffer = Buffer.from(data.Content, 'base64');
+        await uploadToS3("package-storage-bucket", `${packageID}.zip`, contentBuffer);
+
+        if (data.URL) {
+            const putParams = {
+                TableName: 'Packages',
+                Item: {
+                    ID: packageID,
+                    Version: metadata.Version,
+                    Name: existingPackage.Name,
+                    data: {
+                        S3Bucket: "package-storage-bucket",
+                        S3Key: `${packageID}.zip`,
+                        JSProgram: data.JSProgram || '',
+                        URL: data.URL,
+                    },
+                },
+            };
+            await ddbDocClient.send(new PutCommand(putParams));
+        } else {
+            const putParams = {
+                TableName: 'Packages',
+                Item: {
+                    ID: packageID,
+                    Version: metadata.Version,
+                    Name: existingPackage.Name,
+                    data: {
+                        S3Bucket: "package-storage-bucket",
+                        S3Key: `${packageID}.zip`,
+                        JSProgram: data.JSProgram || '',
+                    },
+                },
+            };
+            await ddbDocClient.send(new PutCommand(putParams));
+        }
 
         res.status(200).json({ message: 'Package updated successfully.' });
     } catch (error) {
@@ -227,8 +257,8 @@ export const updatePackage = async (req: Request, res: Response) => {
 
 export const getPackageByID = async (req: Request, res: Response) => {
     const { id } = req.params;
-    try {
 
+    try {
         const params = {
             TableName: 'Packages',
             KeyConditionExpression: 'ID = :id',
@@ -243,26 +273,88 @@ export const getPackageByID = async (req: Request, res: Response) => {
 
         if (result.Items && result.Items.length > 0) {
             const cleanData = result.Items.map((item) => unmarshall(item));
-            res.status(200).json(cleanData[0]);
+
+            const { S3Bucket, S3Key } = cleanData[0].data;
+            const base64Content = await downloadFromS3(S3Bucket, S3Key);
+            
+            return res.status(200).json({
+                metadata: {
+                    Name: cleanData[0].Name,
+                    Version: cleanData[0].Version,
+                    ID: cleanData[0].ID,
+                },
+                data: {
+                    Content: base64Content,
+                    URL: cleanData[0].data.URL,
+                    JSProgram: cleanData[0].data.JSProgram || '',
+                },
+            });
         } else {
-            return res.status(404).json({ error: 'Package not found.' });
+            return res.status(404).json({ error: 'Package does not exist.' });
         }
     } catch (error) {
         console.error('Error fetching package:', error);
-        res.status(500).json({ error: 'Failed to fetch package.' });
+        res.status(400).json({ error: 'Failed to fetch package.' });
     }
 };
 
-export const getPackageByName = (req: Request, res: Response) => {
-    // IMPLEMENT GET PACKAGE BY NAME HERE
-    res.send('Packages by Name.');
-}
+export const getPackageByName = async (req: Request, res: Response) => {
+    const { name } = req.params;
+
+    if (!name) {
+        return res.status(400).json({ error: 'Package name is required.' });
+    }
+
+    try {
+        // Fetch packages by name using the helper function
+        const packages = await fetchAllPackagesByName(name); // UPDATED CODE
+
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ error: 'No packages found with the specified name.' });
+        }
+
+        // Format response like /packages
+        const formattedPackages = packages.map((pkg) => ({
+            Name: pkg.Name,
+            Version: pkg.Version,
+            ID: pkg.ID,
+        })); // UPDATED CODE
+
+        res.status(200).json(formattedPackages); // UPDATED CODE
+    } catch (error) {
+        console.error('Error fetching packages by name:', error);
+        res.status(500).json({ error: 'Failed to fetch packages by name.' });
+    }
+};
+
+type PackageQuery = {
+    Name: string;
+    Version?: string;
+};
 
 export const getPackages = async (req: Request, res: Response) => {
-    const queries = req.body;
+    // const queries = req.body;
+    // const { offset = "0" } = req.query;
+
+    // console.log(`getPackages queries: ${queries}`);
+
+    // if (!Array.isArray(queries) || queries.length === 0) {
+    //     return res.status(400).json({ error: 'Request body must be a non-empty array of PackageQuery objects.' });
+    // }
+    let queries: PackageQuery[] | PackageQuery = req.body;
+
+    // UPDATED CODE: Normalize the input to an array if it's a single object
+    if (!Array.isArray(queries)) {
+        if (queries && queries.Name) {
+            queries = [queries]; 
+        } else {
+            return res.status(400).json({ error: 'Invalid request format. Provide a package object or an array of packages.' });
+        }
+    }
+
     const { offset = "0" } = req.query;
 
-    if (!Array.isArray(queries) || queries.length === 0) {
+    if (queries.length === 0) {
         return res.status(400).json({ error: 'Request body must be a non-empty array of PackageQuery objects.' });
     }
 
@@ -457,12 +549,10 @@ export const getPackageCost = async (req: Request, res: Response) => {
         // Extract the package data
         const packageData = unmarshall(queryData.Items[0]);
 
-        // Check for Content in data
-        if (!packageData.data?.Content) {
-            return res.status(500).json({ error: "Package content is missing" });
-        }
+        const { S3Bucket, S3Key } = packageData.data;
+        const base64Content = await downloadFromS3(S3Bucket, S3Key);
 
-        const totalCost = calculatePackageSize(packageData.data.Content);
+        const totalCost = calculatePackageSize(base64Content);
 
         // Respond with the cost
         return res.status(200).json({
@@ -490,6 +580,4 @@ function calculatePackageSize(content: string): number {
     const sizeInBytes = Buffer.byteLength(content, "base64");
     const sizeInMB = sizeInBytes / (1024 * 1024);
     return Math.round(sizeInMB * 100) / 100; // Round to 2 decimals
-    // const sizeInKB = sizeInBytes / (1024);
-    // return Math.round(sizeInKB * 100) / 100; // Round to 2 decimals
 }

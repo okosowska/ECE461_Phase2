@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 
 export const getTracks = (req: Request, res: Response) => {
-    res.status(200).json({
-        plannedTracks: ["Access control track"],
-    });
+    const plannedTracks = [
+        "Access control track"
+    ];
+
+    res.status(200).json({ plannedTracks });
 };
