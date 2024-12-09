@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.post('/', uploadPackage as any);
 router.get('/:id', getPackageByID as any);
-router.put('/:id', updatePackage as any);
+router.post('/:id', updatePackage as any);
 router.get('/:id/rate', ratePackage as any);
 router.get('/:id/cost', getPackageCost as any);
 router.get('/byName/:name', getPackageByName as any);
