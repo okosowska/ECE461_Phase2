@@ -7,6 +7,9 @@ import { handleOutput } from './util';
 import { computeMetrics } from './metrics';
 import * as winston from 'winston';
 import * as dotenv from 'dotenv';
+import * as git from 'isomorphic-git';
+import * as http from 'isomorphic-git/http/node';
+
 
 dotenv.config();
 const log_levels = ['warn', 'info', 'debug'];
@@ -91,6 +94,18 @@ async function classifyAndConvertURL(urlString: string): Promise<URL | null> {
     return null;
 }
 
+// /**
+//  * @function ensureDirectoryExists
+//  * @description Creates dir if needed.
+//  * @param {string} dir - The directory where the dir is checked.
+//  * @returns {void}
+//  */
+// function ensureDirectoryExists(dir: string): void {
+//     if (!fs.existsSync(dir)) {
+//         fs.mkdirSync(dir, { recursive: true });
+//     }
+// }
+
 /**
  * @function cloneRepo
  * @description Clones a GitHub repository.
@@ -99,14 +114,29 @@ async function classifyAndConvertURL(urlString: string): Promise<URL | null> {
  * @returns {Promise<void>}
  */
 async function cloneRepo(githubUrl: string, targetDir: string): Promise<void>  {
-    const git = simpleGit();
+    // const git = simpleGit();
     // await handleOutput(`Cloning GitHub repo: ${githubUrl}`, '');
+    // try {
+    //     await git.clone(githubUrl, targetDir, ["--depth", "1"]);
+    //     // await handleOutput(`Cloned ${githubUrl} successfully.\n`, '');
+    // } catch (error) {
+    //     throw new Error(`Failed to clone ${githubUrl}\nError message : ${error}`);
+    // }
+
     try {
-        await git.clone(githubUrl, targetDir, ["--depth", "1"]);
-        // await handleOutput(`Cloned ${githubUrl} successfully.\n`, '');
-    } catch (error) {
-        throw new Error(`Failed to clone ${githubUrl}\nError message : ${error}`);
-    }
+        await git.clone({
+          fs,
+          http,
+          dir: targetDir,
+          url: githubUrl,
+          singleBranch: true,
+          depth: 1,
+        });
+        await handleOutput(`Cloned ${githubUrl} successfully.\n`, '');
+      } catch (error) {
+        // throw new Error(`Failed to clone ${githubUrl}\nError: ${error}`);
+        console.warn(`Failed to clone ${githubUrl}\nError: ${error}`)
+      }
 }
 
 /**
@@ -193,8 +223,14 @@ async function processURL(url: string): Promise<Record<string, unknown> | null> 
                 //         await handleOutput('', `Error computing metrics\nError message: ${error}`);
                 //         return null;
                 //     });
-                await cloneRepo(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
-                const result = await computeMetrics(githubUrl.toString(), `./cloned_repos/${owner} ${packageName}`);
+                // try {
+                //     await fs.promises.mkdir(`/tmp/cloned_repos/${owner} ${packageName}`);
+                // } catch (error) {
+                //     console.warn(`Failed to create directory /tmp/cloned_repos/${owner} ${packageName}. Error: ${error}`);
+                // }
+
+                await cloneRepo(githubUrl.toString(), `/tmp/cloned_repo`);
+                const result = await computeMetrics(githubUrl.toString(), `/tmp/cloned_repo`);
                 
                 const resultObj = result as Record<string, unknown>;
                 for (const [key, value] of Object.entries(resultObj)) {
@@ -218,8 +254,6 @@ async function processURL(url: string): Promise<Record<string, unknown> | null> 
         await handleOutput('', `Error processing the URL\nError message: ${(error as Error).message}`);
         return null;
     }
-    console.log('You shouldnt be here');
-    return null;
 };
 
 /**

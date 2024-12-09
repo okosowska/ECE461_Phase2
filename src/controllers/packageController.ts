@@ -26,26 +26,27 @@ type PackageItem = {
 const MAX_DYNAMODB_ITEM_SIZE = 400 * 1024;
 
 export const uploadPackage = async (req: Request, res: Response) => {
-    const { metadata, data } = req.body;
+    const { Content, URL, JSProgram, debloat, Name } = req.body;
 
     // Validation: Ensure metadata and data are provided
-    if (!metadata || !data || !metadata.Name || (!data.Content && !data.URL)) {
-        return res.status(400).json({ error: 'Missing required fields: metadata.Name and either data.Content or data.URL are required.' });
+    if (!Name || (Content && URL) || (!Content && !URL)) {
+        console.log(Name, Content, URL, JSProgram);
+        return res.status(400).json({ error: 'Missing required fields: Name and either Content or URL are required.' });
     }
 
     try {
         let packageVersion = '1.0.0';
-        let packageContent = data.Content;
+        let packageContent = Content;
 
         // If Content-based upload
-        if (data.Content) {
+        if (Content) {
             // Check if the package already exists in the registry
             const existingPackages = await ddbDocClient.send(
                 new ScanCommand({
                     TableName: 'Packages',
                     FilterExpression: '#name = :name',
                     ExpressionAttributeNames: { '#name': 'Name' },
-                    ExpressionAttributeValues: { ':name': metadata.Name },
+                    ExpressionAttributeValues: { ':name': Name },
                 })
             );
 
@@ -53,7 +54,7 @@ export const uploadPackage = async (req: Request, res: Response) => {
                 return res.status(400).json({ error: 'Package already exists. Use POST /package/{id} to update versions.' });
             }
 
-            const contentSize = Buffer.byteLength(data.Content, 'base64');
+            const contentSize = Buffer.byteLength(Content, 'base64');
             if (contentSize > MAX_DYNAMODB_ITEM_SIZE) {
                 return res.status(400).json({
                     error: `Package size exceeds the 400KB limit. Current size: ${(contentSize / 1024).toFixed(2)} KB.`,
@@ -61,7 +62,7 @@ export const uploadPackage = async (req: Request, res: Response) => {
             }
 
             // Generate package ID (Name + Version)
-            const packageID = generatePackageID(metadata.Name, packageVersion);
+            const packageID = generatePackageID(Name, packageVersion);
 
             // Save to DynamoDB
             await ddbDocClient.send(
@@ -69,41 +70,53 @@ export const uploadPackage = async (req: Request, res: Response) => {
                     TableName: 'Packages',
                     Item: {
                         ID: packageID,
-                        Name: metadata.Name,
+                        Name: Name,
                         Version: packageVersion,
                         data: {
                             Content: packageContent,
-                            JSProgram: data.JSProgram,
+                            JSProgram: JSProgram,
                         },
                     },
                 })
             );
 
-            return res.status(201).json({ message: 'Package uploaded successfully', ID: packageID });
+            return res.status(201).json({
+                metadata: {
+                    Name: Name,
+                    Version: packageVersion,
+                    ID: packageID,
+                },
+                data: {
+                    Content: packageContent,
+                    JSProgram: JSProgram,
+                },
+            });
         }
 
         // If URL-based upload
-        if (data.URL) {
+        if (URL) {
             try {
-                const fetchedPackage = await fetchPackageFromUrl(data.URL);
+                const fetchedPackage = await fetchPackageFromUrl(URL);
                 const packageSize = Buffer.byteLength(fetchedPackage.content, 'base64');
                 packageVersion = fetchedPackage.version || "1.0.0";
-                console.log(fetchedPackage.version, packageVersion);
+                // console.log(fetchedPackage.version, packageVersion);
 
-                const packageExists = await checkPackageVersionExists(metadata.Name, packageVersion);
+                const packageExists = await checkPackageVersionExists(Name, packageVersion);
                 if (packageExists) {
                     return res.status(400).json({ error: 'Package version already exists.' });
                 }
+
+                let urlContent = ''
                 
                 if (packageSize > MAX_DYNAMODB_ITEM_SIZE) {
-                    data.Content = 'UEsDBBQAAAAAAA9DQlMAAAAAAAAAAAAAAAALACAAZXhjZXB';
-                    data.Version = packageVersion;
+                    // data.Content = 'UEsDBBQAAAAAAA9DQlMAAAAAAAAAAAAAAAALACAAZXhjZXB';
+                    urlContent = 'UEsDBBQAAAAAAA9DQlMAAAAAAAAAAAAAAAALACAAZXhjZXB';
                 } else {
-                    data.Content = fetchedPackage.content;
-                    data.Version = packageVersion;
+                    // data.Content = fetchedPackage.content;
+                    urlContent = fetchedPackage.content;
                 }
 
-                const packageID = generatePackageID(metadata.Name, packageVersion);
+                const packageID = generatePackageID(Name, packageVersion);
         
                 // Store the compressed content in DynamoDB
                 await ddbDocClient.send(
@@ -111,18 +124,29 @@ export const uploadPackage = async (req: Request, res: Response) => {
                         TableName: "Packages",
                         Item: {
                             ID: packageID,
-                            Name: metadata.Name,
+                            Name: Name,
                             Version: packageVersion,
                             data: {
-                                Content: data.Content, // Store the compressed Base64 string
-                                URL: data.URL,
-                                JSProgram: data.JSProgram,
+                                Content: urlContent, // Store the compressed Base64 string
+                                URL: URL,
+                                JSProgram: JSProgram,
                             },
                         },
                     })
                 );
         
-                return res.status(201).json({ message: "Package uploaded successfully", ID: packageID });
+                return res.status(201).json({
+                    metadata: {
+                        Name: Name,
+                        Version: packageVersion,
+                        ID: packageID,
+                    },
+                    data: {
+                        Content: urlContent,
+                        URL: URL,
+                        JSProgram: JSProgram,
+                    },
+                });
             } catch (error) {
                 console.error("Error uploading package:", error);
                 return res.status(400).json({ error: error });
@@ -453,7 +477,7 @@ export const getPackageCost = async (req: Request, res: Response) => {
 };
 
 async function clearClonedRepos(): Promise<void> {
-    const clonedReposPath = path.resolve('./cloned_repos');
+    const clonedReposPath = path.resolve('./tmp/cloned_repo');
     try {
         await fs.promises.rm(clonedReposPath, { recursive: true, force: true });
         console.log(`Deleted cloned repositories directory: ${clonedReposPath}`);
