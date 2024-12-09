@@ -1,6 +1,6 @@
 import apiClient from './apiClientHelper';
 
-describe('/package/{id} POST', () => {
+describe('/package/{id}', () => {
     beforeAll(async () => {
         await apiClient.authenticate();
     });

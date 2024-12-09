@@ -1,6 +1,6 @@
 import apiClient from './apiClientHelper';
 
-describe('/package/{id} GET', () => {
+describe('/package/{id}', () => {
     beforeAll(async () => {
         await apiClient.authenticate();
     });
