@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import Search from './pages/Search';
+import Details from './pages/Details';
 
 const App = () => {
   return (
@@ -14,6 +15,7 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/package/:id" element={<Details />} />
       </Routes>
     </Router>
   );
